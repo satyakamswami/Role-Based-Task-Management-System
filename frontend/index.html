@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login / Register</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2 id="form-title">Login</h2>
+        <div id="message"></div>
+        
+        <form id="auth-form">
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit" id="submit-btn">Login</button>
+        </form>
+        
+        <p style="text-align: center;">
+            <a href="#" id="toggle-mode">Need to register? Click here</a>
+        </p>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        let isLogin = true;
+
+        document.getElementById("toggle-mode").addEventListener("click", (e) => {
+            e.preventDefault();
+            isLogin = !isLogin;
+            document.getElementById("form-title").innerText = isLogin ? "Login" : "Register";
+            document.getElementById("submit-btn").innerText = isLogin ? "Login" : "Register";
+            e.target.innerText = isLogin ? "Need to register? Click here" : "Already have an account? Login";
+        });
+
+        document.getElementById("auth-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const msgBox = document.getElementById("message");
+
+            try {
+                if (isLogin) {
+                    // FastAPI OAuth2 expects URL Encoded Form Data, NOT JSON
+                    const formData = new URLSearchParams();
+                    formData.append("username", email);
+                    formData.append("password", password);
+
+                    const res = await fetch(`${API_URL}/token`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: formData
+                    });
+                    
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail);
+                    
+                    localStorage.setItem("token", data.access_token);
+                    window.location.href = "dashboard.html";
+                } else {
+                    // Registration expects JSON
+                    const res = await fetch(`${API_URL}/register`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email, password })
+                    });
+                    
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail);
+                    
+                    msgBox.style.color = "green";
+                    msgBox.innerText = "Registration successful! Please login.";
+                    document.getElementById("toggle-mode").click(); // Switch to login mode
+                }
+            } catch (err) {
+                msgBox.style.color = "red";
+                msgBox.innerText = err.message;
+            }
+        });
+    </script>
+</body>
+</html>
